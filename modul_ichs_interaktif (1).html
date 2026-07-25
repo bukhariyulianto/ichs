@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Islamic Civilization Health System (ICHS) - Modul Interaktif Deep Dive</title>
+    
+    <!-- Fonts: Inter for clean readability & Playfair Display for academic elegance -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            950: '#052e16',
+                        },
+                        emeraldCustom: {
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                        },
+                        gold: {
+                            300: '#fde047',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        /* Custom Smooth Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Custom Animations */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.03); }
+        }
+        .animate-glow { animation: pulseGlow 4s infinite ease-in-out; }
+        
+        .glass-panel-light {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .glass-panel-dark {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors duration-300 min-h-full font-sans selection:bg-brand-500 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- AUDIO MANAGER WITH MUTE GUARD ---
+        let audioInitialized = false;
+        const initAudio = async () => {
+            if (!audioInitialized && window.Tone) {
+                await Tone.start();
+                audioInitialized = true;
+            }
+        };
+
+        const playSound = {
+            click: (muted) => {
+                if (muted || !window.Tone) return;
+                try {
+                    const synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.005, decay: 0.08, sustain: 0, release: 0.08 } }).toDestination();
+                    synth.volume.value = -12;
+                    synth.triggerAttackRelease("C5", "32n");
+                } catch(e){}
+            },
+            next: (muted) => {
+                if (muted || !window.Tone) return;
+                try {
+                    const synth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" } }).toDestination();
+                    synth.volume.value = -10;
+                    synth.triggerAttackRelease(["E4", "G4", "B4"], "16n");
+                } catch(e){}
+            },
+            correct: (muted) => {
+                if (muted || !windowTone) return;
+                try {
+                    const synth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" } }).toDestination();
+                    synth.volume.value = -8;
+                    synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n");
+                } catch(e){}
+            },
+            wrong: (muted) => {
+                if (muted || !window.Tone) return;
+                try {
+                    const synth = new Tone.MembraneSynth().toDestination();
+                    synth.volume.value = -6;
+                    synth.triggerAttackRelease("A1", "8n");
+                } catch(e){}
+            },
+            complete: (muted) => {
+                if (muted || !window.Tone) return;
+                try {
+                    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    synth.volume.value = -6;
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C4", "8n", now);
+                    synth.triggerAttackRelease("E4", "8n", now + 0.15);
+                    synth.triggerAttackRelease("G4", "8n", now + 0.3);
+                    synth.triggerAttackRelease("C5", "2n", now + 0.45);
+                } catch(e){}
+            }
+        };
+
+        // --- COMPREHENSIVE DETAILED MODULE DATA ---
+        const moduleLevels = [
+            {
+                id: "grand-theory",
+                levelTag: "GRAND THEORY",
+                title: "Blueprint Peradaban Kesehatan Islam",
+                subtitle: "Arsitektur Holistik Sistem Kesehatan Berbasis Wahyu & Sunnah",
+                icon: "ph-bank",
+                color: "emerald",
+                overview: "Sistem kesehatan Islam bukanlah produk aksidental atau sekadar adopsi medis kuno. Ia adalah hasil manifestasi logis dari Pohon Peradaban Islam yang berakar pada Aqidah Tauhid dan berbuah pada pelayanan kesehatan universal (Bimaristan).",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-brand-700 dark:text-brand-400">1. Ontologi dan Epistemologi Kesehatan Islam</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Sistem Kesehatan Islam (Islamic Civilization Health System / ICHS) dibangun di atas weltanschauung (pandangan dunia) Tauhid. Manusia tidak dipandang sekadar entitas biologis-materialistis, melainkan mahluk yang terdiri dari jasmani (fisik), ruhiyah (spiritual), dan 'aqliyah (intelektual). Oleh karena itu, konsep "sehat" (Ash-Shihhah) mencakup keselarasan seluruh aspek ini sesuai petunjuk Pencipta (Allah ﷻ).
+                    </p>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-brand-700 dark:text-brand-400">2. Hierarki Konstruksi Peradaban</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Arsitektur ICHS mengalir secara hirarkis dan konsisten dari puncaknya:
+                    </p>
+                    <ul class="list-disc pl-6 space-y-2 mb-4 text-slate-600 dark:text-slate-300">
+                        <li><strong>Wahyu (Al-Qur'an & Sunnah):</strong> Sumber kebenaran mutlak yang menetapkan kerangka nilai, etika, dan perintah menjaga kehidupan.</li>
+                        <li><strong>Aqidah Islam:</strong> Keyakinan mendasar yang melahirkan 3 pilar operasional: <em>At-Tafkir</em> (cara berpikir saintifik-islami), <em>Syakhsiyah</em> (kepribadian dokter & pasien), dan <em>Nizham Islam</em> (sistem hukum, ekonomi, dan politik).</li>
+                        <li><strong>Maqashid Syariah:</strong> Tujuan utama syariat untuk menjaga 5 unsur esensial kehidupan (Agama, Jiwa, Akal, Keturunan, Harta).</li>
+                        <li><strong>Bimaristan System:</strong> Rumah sakit terpadu sebagai pusat pelayanan medis, riset, pendidikan, dan sains farmasi gratis untuk semua rakyat.</li>
+                    </ul>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 rounded-r-lg">
+                        <h4 class="font-bold text-amber-900 dark:text-amber-300 mb-1">🔍 Bukti Sejarah: Keunikan Bimaristan Mansuri (Kairo, 1284 M)</h4>
+                        <p class="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                            Bimaristan Mansuri melayani hingga 4.000 pasien per hari tanpa membedakan ras, agama, atau status sosial. Setiap pasien yang sembuh dibekali pakaian baru dan uang saku agar tidak langsung bekerja berat. Seluruh dana operasional dijamin oleh lembaga Waqf negara—menjadikannya bukti nyata aplikasi Blueprint Grand Theory kesehatan Islam.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-1",
+                levelTag: "LEVEL 1",
+                title: "Aqidah Melahirkan Peradaban",
+                subtitle: "Mengapa Perubahan Tidak Dimulai dari Bangunan Rumah Sakit?",
+                icon: "ph-mosque",
+                color: "teal",
+                overview: "Peradaban Islam tidak mengawali revolusi kesehatannya dengan membangun fisik rumah sakit terlebih dahulu, melainkan meluruskan fondasi aqidah dan cara pandang manusia terhadap tubuh, sakit, dan kesembuhan.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-teal-700 dark:text-teal-400">1. Perbandingan Paradigma: Sekuler vs Islam</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Dalam pandangan materialistis sekuler, tubuh adalah mesin biologis yang terpisah dari pencipta; sakit hanyalah gangguan mekanis. Sebaliknya, dalam peradaban Islam:
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div class="p-4 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                            <h4 class="font-bold text-slate-800 dark:text-slate-200 border-b pb-1 mb-2">Pandangan Sekuler</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-400">Kesehatan adalah komoditas bisnis. Pengobatan berfokus pada gejala fisik tanpa memperhatikan etika spiritual dan ketenangan jiwa.</p>
+                        </div>
+                        <div class="p-4 bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-800 rounded-xl">
+                            <h4 class="font-bold text-brand-800 dark:text-brand-300 border-b border-brand-200 pb-1 mb-2">Pandangan Aqidah Islam</h4>
+                            <p class="text-xs text-brand-900 dark:text-brand-200">Tubuh adalah amanah Allah. Sakit adalah penggugur dosa sekaligus ujian, dan mencari obat (*At-Tadawi*) adalah bentuk ibadah serta ketundukan pada hukum kausalitas (*Sunnatullah*).</p>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-teal-700 dark:text-teal-400">2. Rantai Logis Kausalitas Peradaban</h3>
+                    <p class="mb-2 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Ketika Aqidah Tauhid menghujam dalam jiwa masyarakat, lahirlah rasa tanggung jawab sosial untuk saling menyembuhkan. Aqidah membentuk <strong>At-Tafkir</strong> (cara berpikir objektif-ilmiah) yang mendorong penelitian kausalitas, yang kemudian membentuk <strong>Budaya Sehat</strong> hingga mewujud menjadi <strong>Institusi Kesehatan (Bimaristan)</strong>.
+                    </p>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-teal-50 dark:bg-teal-950/40 border-l-4 border-teal-500 rounded-r-lg">
+                        <h4 class="font-bold text-teal-900 dark:text-teal-300 mb-1">📜 Hadits Utama Sebagai Pemicu Riset Medis</h4>
+                        <p class="text-sm text-teal-800 dark:text-teal-200 italic">
+                            "Tidaklah Allah menurunkan suatu penyakit melainkan Dia juga menurunkan obatnya." (HR. Bukhari).
+                        </p>
+                        <p class="text-xs text-teal-700 dark:text-teal-300 mt-2">
+                            Sabda Nabi ﷺ ini memberikan keyakinan mutlak (*optimisme ilmiah*) kepada para ilmuwan Muslim bahwa setiap penyakit pasti ada obatnya jika diteliti dengan tekun.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-2",
+                levelTag: "LEVEL 2",
+                title: "Aqidah Menghasilkan Ilmu",
+                subtitle: "Transformasi Keyakinan Menjadi Metodologi Sains Kedokteran",
+                icon: "ph-flask",
+                color: "blue",
+                overview: "Peradaban Islam melahirkan ribuan dokter ternama (Ibn Sina, Al-Razi, Al-Zahrawi) bukan karena kebetulan, melainkan karena Al-Qur'an mewajibkan observasi empiris dan penggunaan akal secara sistematis.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-blue-700 dark:text-blue-400">1. Mandat Epistemologis Al-Qur'an</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Al-Qur'an memuat ratusan ayat yang menuntut manusia bertindak ilmiah: <em>Yanzhurun</em> (memperhatikan), <em>Yatafakkarun</em> (memikirkan), <em>Yaqilun</em> (menggunakan akal). Penyelidikan medis dianggap sebagai bagian dari membaca 'ayat-ayat kauniyah' (tanda-tanda kebesaran Allah di alam semesta).
+                    </p>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-blue-700 dark:text-blue-400">2. Peralihan dari Mitos ke Metode Ilmiah Esperimental</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Sebelum Islam, dunia medis didominasi sihir, takhayul, dan kualitatif galenisme tanpa uji klinis. Ilmuwan Muslim seperti <strong>Al-Razi (Rhazes)</strong> memperkenalkan uji kontrol klinis (*clinical trials*) pertama saat memilih lokasi rumah sakit di Baghdad menggunakan gantung daging untuk menguji tingkat kontaminasi udara.
+                    </p>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-blue-50 dark:bg-blue-950/40 border-l-4 border-blue-500 rounded-r-lg">
+                        <h4 class="font-bold text-blue-900 dark:text-blue-300 mb-1">🔬 Ibn al-Nafis & Penemuan Sirkulasi Paru-Paru</h4>
+                        <p class="text-sm text-blue-800 dark:text-blue-200">
+                            Ibn al-Nafis mengoreksi kekeliruan teori Galenus mengenai aliran darah jantung. Berdasarkan korpus pemikiran rasional-aqidah, ia membuktikan secara anatomis keberadaan sirkulasi darah pulmonal (paru-paru) 300 tahun sebelum William Harvey di Eropa.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-3",
+                levelTag: "LEVEL 3",
+                title: "Ilmu Melahirkan Universitas",
+                subtitle: "Ekosistem Pendidikan Kedokteran Terstruktur dan Transdisiplin",
+                icon: "ph-books",
+                color: "indigo",
+                overview: "Sebelum Bimaristan raksasa dibangun, peradaban Islam telah mematangkan infrastruktur pendidikan ilmiah melalui Halaqah, Perpustakaan, Madrasah, dan Laboratorium Riset.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-indigo-700 dark:text-indigo-400">1. Evolusi Institusi Pendidikan Kedokteran</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div class="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">🕌 Halaqah Masjid</span>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Diskusi awal teori medis, etika kedokteran, dan pengobatan nabawi (*Thibbun Nabawi*).</p>
+                        </div>
+                        <div class="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">📚 Khizanat al-Kutub (Perpustakaan)</span>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Penerjemahan teks Yunani, Persia, India yang dikritisi, direvisi, dan diperkaya dengan sains Islam.</p>
+                        </div>
+                        <div class="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">🏫 Madrasah Khassah</span>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Sekolah tinggi formal yang mengajarkan anatomi, fisiologi, farmakologi, serta hukum fiqh medis.</p>
+                        </div>
+                        <div class="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <span class="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">🧪 Laboratorium Saydalah</span>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Tempat distilasi, ekstraksi kimia, dan formulasi racikan obat berskala standar ilmiah.</p>
+                        </div>
+                    </div>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-500 rounded-r-lg">
+                        <h4 class="font-bold text-indigo-900 dark:text-indigo-300 mb-1">📖 Kitab Al-Qanun fi al-Tibb (The Canon of Medicine)</h4>
+                        <p class="text-sm text-indigo-800 dark:text-indigo-200">
+                            Mahakarya Ibn Sina ini menjadi kurikulum baku pengajaran kedokteran di universitas-universitas Eropa (seperti Montpellier dan Louvain) selama lebih dari 500 tahun karena sistematika dan metodologi pembahasannya yang luar biasa runut.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-4",
+                levelTag: "LEVEL 4",
+                title: "Universitas Melahirkan Bimaristan",
+                subtitle: "Kompleks Kesehatan Terpadu: Hospital, Faculty, Lab & Pharmacy",
+                icon: "ph-hospital",
+                color: "purple",
+                overview: "Bimaristan bukan sekadar tempat pembaringan orang sakit, melainkan sebuah Teaching Hospital modern tempat berintegrasinya pengobatan, pengajaran, riset, dan produksi obat secara simultan.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-purple-700 dark:text-purple-400">1. Anatomi Komprehensif Bimaristan</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Bimaristan dirancang dengan tata ruang higienis canggih. Memiliki bangsal terpisah berdasarkan jenis penyakit (penyakit dalam, bedah, mata, ortopedi, penyakit menular, dan gangguan jiwa) serta pemisahan tegas bangsal pria dan wanita dengan perawat sejenis.
+                    </p>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-purple-700 dark:text-purple-400">2. Sistem Ijazah & Sertifikasi Dokter (Ujian Profesi)</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Calon dokter tidak boleh berpraktik sebelum menempuh ujian ketat di hadapan <em>Muhtasib</em> (Pengawas Standar) dan Kepala Dokter Bimaristan. Mereka wajib menguasai karya Al-Razi/Ibn Sina serta mengumpati sumpah medis etis.
+                    </p>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-purple-50 dark:bg-purple-950/40 border-l-4 border-purple-500 rounded-r-lg">
+                        <h4 class="font-bold text-purple-900 dark:text-purple-300 mb-1">🏥 Bimaristan Nuri (Damaskus, 1154 M)</h4>
+                        <p class="text-sm text-purple-800 dark:text-purple-200">
+                            Dilengkapi dengan perpustakaan medis besar yang disumbangkan oleh Sultan Nuruddin Zanki. Para dokter berkumpul setiap hari setelah visit pasien untuk mendiskusikan kasus-kasus langka dan melatih para mahasiswa kedokteran.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-5",
+                levelTag: "LEVEL 5",
+                title: "Bimaristan Melahirkan Public Health",
+                subtitle: "Paradigma Kesehatan Masyarakat: Preventif, Sanitasi & Edukasi",
+                icon: "ph-globe-hemisphere-west",
+                color: "cyan",
+                overview: "Fokus utama ICHS tidak hanya mengobati orang sakit di dalam gedung (kuratif), tetapi menciptakan lingkungan hidup yang mencegah munculnya wabah (preventif & promotif).",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-cyan-700 dark:text-cyan-400">1. Pilar Kesehatan Masyarakat dalam ICHS</h3>
+                    <ul class="list-disc pl-6 space-y-2 mb-4 text-slate-600 dark:text-slate-300">
+                        <li><strong>Sanitasi & Pasokan Air:</strong> Pembangunan saluran air bersih (*Qanat*) dan pemandian umum (*Hammam*) di seluruh sudut kota peradaban.</li>
+                        <li><strong>Hisbah (Pengawasan Pasar & Makanan):</strong> Petugas hisbah secara berkala memeriksa kebersihan kedai makan, kualitas air minum, dan kesegaran daging di pasar.</li>
+                        <li><strong>Karantina & Pengendalian Wabah (Al-Hajr al-Sihhi):</strong> Penerapan ketat prinsip izolasi kawasan berpenyakit menular sesuai arahan hadits Nabi ﷺ.</li>
+                        <li><strong>Kesehatan Ibu dan Anak (KIA):</strong> Perhatian khusus pada gizi ibu hamil, masa menyusui 2 tahun, dan perawatan bayi.</li>
+                    </ul>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-cyan-50 dark:bg-cyan-950/40 border-l-4 border-cyan-500 rounded-r-lg">
+                        <h4 class="font-bold text-cyan-900 dark:text-cyan-300 mb-1">🛡️ Tindakan Karantina Wabah Ibnu Khatima</h4>
+                        <p class="text-sm text-cyan-800 dark:text-cyan-200">
+                            Saat Maut Hitam (Black Death) melanda Eropa dan Timur Tengah abad ke-14, ilmuwan Andalusia Ibn al-Khatib dan Ibn Khatima menulis risalah ilmiah yang membuktikan contagion (penularan) melalui pakaian, kapalnya, dan kontak fisik, serta memberlakukan instruksi isolasi wilayah.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-6",
+                levelTag: "LEVEL 6",
+                title: "Bimaristan & Mental Health",
+                subtitle: "Integrasi Holistik Jiwa dan Raga Tanpa Stigma",
+                icon: "ph-brain",
+                color: "rose",
+                overview: "Di saat Eropa abad pertengahan membakar penderita gangguan jiwa karena dianggap kesurupan iblis, Bimaristan Islam telah memiliki bangsal psikiatri khusus dengan terapi psikoterapi, musik, dan keharuman.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-rose-700 dark:text-rose-400">1. Konsep Kesetaraan Penyakit Jiwa dan Tubuh</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Ilmuwan Muslim **Abu Zayd al-Balkhi** dalam mahakaryanya <em>Masalih al-Abdan wa al-Anfus</em> (Sustenance of Bodies and Souls) menetapkan bahwa jiwa dan badan bisa mengalami sakit. Sakit jiwa (seperti depresi, kecemasan, obsesif-kompulsif) berdampak langsung pada badan, begitu pula sebaliknya.
+                    </p>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-rose-700 dark:text-rose-400">2. Metode Terapi Psikiatri Bimaristan</h3>
+                    <ul class="list-disc pl-6 space-y-2 mb-4 text-slate-600 dark:text-slate-300">
+                        <li><strong>Al-Ilaj bi al-Musiqa (Musikoterapi):</strong> Penggunaan maqam musik tertentu untuk menenangkan pasien depresi atau mania.</li>
+                        <li><strong>Terapi Lingkungan:</strong> Taman bunga indah, gemericik air mancur, dan aroma terapi herbal.</li>
+                        <li><strong>Psikoterapi Kognitif (Al-Ilaj al-Nafsi):</strong> Konseling rasional untuk merekonstruksi pola pikir negatif pasien.</li>
+                    </ul>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-rose-50 dark:bg-rose-950/40 border-l-4 border-rose-500 rounded-r-lg">
+                        <h4 class="font-bold text-rose-900 dark:text-rose-300 mb-1">🌸 Bimaristan Divriği & Edirne (Turki)</h4>
+                        <p class="text-sm text-rose-800 dark:text-rose-200">
+                            Dirancang khusus dengan akustik ruangan luar biasa. Suara percikan air mancur di tengah ruangan disesuaikan frekuensinya untuk menghilangkan insomnia dan kegelisahan mental para pasien psikiatri.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-7",
+                levelTag: "LEVEL 7",
+                title: "Maqashid Syariah sebagai Kerangka",
+                subtitle: "5 Pilar Perlindungan Esensial dalam Kebijakan Kesehatan",
+                icon: "ph-scales",
+                color: "amber",
+                overview: "Seluruh regulasi, etika medis, dan investasi sistem kesehatan Islam bermuara pada perlindungan 5 kebutuhan mendasar manusia (Al-Dharuriyyat Al-Khamsah).",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-amber-700 dark:text-amber-400">Matriks Korelasi Maqashid Syariah & Pelayanan Medis</h3>
+                    <div class="overflow-x-auto mb-4">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
+                                    <th class="p-3 border border-amber-200 dark:border-amber-800">Pilar Maqashid</th>
+                                    <th class="p-3 border border-amber-200 dark:border-amber-800">Prinsip Perlindungan</th>
+                                    <th class="p-3 border border-amber-200 dark:border-amber-800">Aplikasi Nyata Sistem Kesehatan</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                                <tr>
+                                    <td class="p-3 font-bold">Hifzh ad-Din (Agama)</td>
+                                    <td class="p-3">Menjaga etika, akidah & kemudahan ibadah pasien</td>
+                                    <td class="p-3">Fikih pasien sakit (tayamum, shalat terlentang), etika kerahasiaan medis, obat halal.</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-bold">Hifzh an-Nafs (Jiwa)</td>
+                                    <td class="p-3">Menyelamatkan & mempertahankan kelangsungan hidup</td>
+                                    <td class="p-3">Layanan gawat darurat gratis, bedah penyelamatan, cegah malpraktik.</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-bold">Hifzh al-'Aql (Akal)</td>
+                                    <td class="p-3">Menjaga fungsi kognitif & kesadaran mental</td>
+                                    <td class="p-3">Layanan psikiatri, larangan zat adiktif/narkotika, riset neurosains.</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-bold">Hifzh an-Nasl (Keturunan)</td>
+                                    <td class="p-3">Menjaga regenerasi manusia sehat & gizi keluarga</td>
+                                    <td class="p-3">Layanan kebidanan (penerapan bidan wanita), imunisasi, pemenuhan gizi balita Stunting.</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-bold">Hifzh al-Mal (Harta)</td>
+                                    <td class="p-3">Mencegah kemiskinan akibat biaya pengobatan</td>
+                                    <td class="p-3">Pembiayaan universal via Waqf & Bayt al-Mal, efisiensi pencegahan penyakit.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-amber-50 dark:bg-amber-950/40 border-l-4 border-amber-500 rounded-r-lg">
+                        <h4 class="font-bold text-amber-900 dark:text-amber-300 mb-1">⚖ Bioetika Medis Islam</h4>
+                        <p class="text-sm text-amber-800 dark:text-amber-200">
+                            Kaidah fiqh <em>"La dharara wa la dhirar"</em> (Tidak boleh membahayakan diri sendiri dan orang lain) menjadi basis penetapan regulasi persetujuan tindakan medis (*informed consent*) serta larangan praktik yang mengancam nyawa.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-8",
+                levelTag: "LEVEL 8",
+                title: "Negara Sebagai Orkestrator",
+                subtitle: "Tanggung Jawab Negara & Pembiayaan Sistem Wakaf Bebas Krisis",
+                icon: "ph-buildings",
+                color: "emerald",
+                overview: "Negara (*Khilafah/Daulah*) bertanggung jawab secara mutlak atas jaminan kesehatan seluruh warga negara sebagai bentuk kewajiban kepemimpinan (*Ra'iyyah*).",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-emerald-700 dark:text-emerald-400">1. Tugas Inti Negara dalam ICHS</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">📋 Formulasi Kebijakan Makro</div>
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">💰 Pembiayaan Bebas Komersialisasi</div>
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">🏗️ Pembangunan Rumah Sakit & Fasilitas</div>
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">👨‍⚕️ Beasiswa & Pendidikan Tenaga Medis</div>
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">🔬 Riset & Pengembangan Obat Syariah</div>
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-xs font-semibold text-emerald-900 dark:text-emerald-200">⚖ Inspeksi Mutu Mutlak (Hisbah)</div>
+                    </div>
+                    <h3 class="text-xl font-serif font-bold mb-3 text-emerald-700 dark:text-emerald-400">2. Keajaiban Model Pembiayaan Wakaf Medis (Waqf)</h3>
+                    <p class="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Bimaristan tidak tergantung pada APBD/APBN tahunan yang fluktuatif, melainkan disokong oleh **Aset Wakaf Produktif** (seperti kebun kurma, pertokoan, pasar, dan pemandian). Hasil keuntungan aset wakaf diabadikan khusus untuk membiayai gaji dokter, obat-obatan, dan operasional rumah sakit secara konstan dan bebas utang.
+                    </p>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 border-l-4 border-emerald-500 rounded-r-lg">
+                        <h4 class="font-bold text-emerald-900 dark:text-emerald-300 mb-1">👑 Doktrin Kepemimpinan Publik</h4>
+                        <p class="text-sm text-emerald-800 dark:text-emerald-200 italic">
+                            "Imam (pemimpin negara) adalah pengurus (ra'in) dan ia bertanggung jawab penuh atas rakyat yang dipimpinnya." (HR. Bukhari & Muslim).
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-9",
+                levelTag: "LEVEL 9",
+                title: "Siklus Peradaban Kesehatan",
+                subtitle: "Lingkaran Kebaikan Berkelanjutan yang Menguatkan Peradaban",
+                icon: "ph-arrows-clockwise",
+                color: "blue",
+                overview: "Kesehatan bukanlah sektor konsumtif penghabis anggaran negara, melainkan investasi peradaban terpenting yang mendorong produktivitas dan kemajuan sains.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-blue-700 dark:text-blue-400">Rantai Siklus Kebangkitan (The Virtuous Flywheel)</h3>
+                    <ol class="list-decimal pl-6 space-y-2 mb-4 text-slate-600 dark:text-slate-300">
+                        <li><strong>Aqidah Tauhid:</strong> Menggerakkan semangat pencarian kebenaran ilmiah.</li>
+                        <li><strong>Pengembangan Sains & Pendidikan:</strong> Melahirkan dokter profesional & fasilitas Bimaristan unggul.</li>
+                        <li><strong>Sistem Kesehatan Efektif:</strong> Menciptakan masyarakat yang sehat jasmani dan rohani.</li>
+                        <li><strong>Peningkatan Produktivitas:</strong> Masyarakat sehat mampu bekerja, berinovasi, beribadah, dan memakmurkan bumi (*Imaratul Ardh*).</li>
+                        <li><strong>Kemakmuran Ekonomi & Aset Wakaf:</strong> Menghasilkan lebih banyak dana wakaf untuk mendanai riset sains yang lebih tinggi lagi.</li>
+                    </ol>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-blue-50 dark:bg-blue-950/40 border-l-4 border-blue-500 rounded-r-lg">
+                        <h4 class="font-bold text-blue-900 dark:text-blue-300 mb-1">📈 Dampak Ekonomi Kesehatan</h4>
+                        <p class="text-sm text-blue-800 dark:text-blue-200">
+                            Pada masa Kekhalifahan Harun al-Rasyid dan Mamun (Zaman Keemasan Islam), pencegahan penyakit dan tingginya angka harapan hidup di Baghdad secara langsung meningkatkan hasil perdagangan dan stabilitas kekhalifahan.
+                        </p>
+                    </div>
+                `
+            },
+            {
+                id: "level-10",
+                levelTag: "LEVEL 10 & SINTESIS",
+                title: "Master Blueprint & Framework Implementasi",
+                subtitle: "Roadmap 3 Lapisan Rekonstruksi Kesehatan Islam Masa Kini",
+                icon: "ph-tree-structure",
+                color: "gold",
+                overview: "Rangkuman menyeluruh dari seluruh rantai peradaban ICHS dan langkah praktis untuk mengimplementasikannya dalam kurikulum, kebijakan, dan rumah sakit modern.",
+                detailedAnalysis: `
+                    <h3 class="text-xl font-serif font-bold mb-3 text-gold-600 dark:text-gold-400">Framework 3 Lapisan Pembelajaran & Rekonstruksi</h3>
+                    <div class="space-y-3 mb-4">
+                        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gold-300 dark:border-gold-800">
+                            <h4 class="font-bold text-gold-600 dark:text-gold-400 mb-1">1. Lapisan Fondasi Pemikiran (Mindset Layer)</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Menanamkan Aqidah Islam, At-Tafkir ilmiah, dan Maqashid Syariah sebagai sudut pandang utama dokter, perawat, dan pengambil kebijakan kesehatan.</p>
+                        </div>
+                        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gold-300 dark:border-gold-800">
+                            <h4 class="font-bold text-gold-600 dark:text-gold-400 mb-1">2. Lapisan Pengembangan Manusia (Human Capital Layer)</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Mengintegrasikan kesehatan fisik dan jiwa, melatih etika profesi kedokteran syariah, serta membina kesehatan berbasis keluarga sakinah.</p>
+                        </div>
+                        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-gold-300 dark:border-gold-800">
+                            <h4 class="font-bold text-gold-600 dark:text-gold-400 mb-1">3. Lapisan Pembangunan Peradaban (Systemic Layer)</h4>
+                            <p class="text-xs text-slate-600 dark:text-slate-300">Membangun rumah sakit syariah terpadu, menghidupkan kembali Wakaf Medis, memperkuat Public Health preventif, serta tata kelola negara yang melayani.</p>
+                        </div>
+                    </div>
+                `,
+                caseStudy: `
+                    <div class="p-4 bg-gold-50 dark:bg-gold-950/40 border-l-4 border-gold-500 rounded-r-lg">
+                        <h4 class="font-bold text-gold-900 dark:text-gold-300 mb-1">🌟 Visi Rahmatan lil 'Alamin</h4>
+                        <p class="text-sm text-gold-800 dark:text-gold-200">
+                            Sistem Kesehatan Islam bukan hanya untuk umat Islam semata, melainkan rahmat universal bagi seluruh umat manusia tanpa diskriminasi—sebagaimana sejarah Bimaristan yang melayani seluruh manusia.
+                        </p>
+                    </div>
+                `
+            }
+        ];
+
+        // --- ENHANCED QUIZ DATA WITH DETAILED RATIONALE ---
+        const quizQuestions = [
+            {
+                id: 1,
+                q: "Mengapa perubahan Sistem Kesehatan dalam Peradaban Islam diawali dari Aqidah, bukan dari pembangunan fisik Bimaristan?",
+                options: [
+                    "Karena membangun rumah sakit membutuhkan biaya yang sangat besar",
+                    "Karena Aqidah membentuk cara pandang (At-Tafkir) dan etika moral manusia tentang fungsi tubuh serta kewajiban menuntut ilmu",
+                    "Karena ilmu kedokteran belum ditemukan pada masa awal Islam",
+                    "Karena perintah membangun rumah sakit tidak ada dalam Al-Qur'an"
+                ],
+                answer: 1,
+                explanation: "Aqidah adalah fondasi pandangan hidup (weltanschauung). Dari aqidah lahirlah kesadaran bahwa tubuh adalah amanah Allah, sakit ada obatnya, dan mencari ilmu medis adalah bentuk ibadah yang kemudian melahirkan institusi Bimaristan."
+            },
+            {
+                id: 2,
+                q: "Manakah pernyataan yang paling tepat menggambarkan keutuhan fungsi Bimaristan pada masa kejayaan Islam?",
+                options: [
+                    "Tempat penampungan khusus pasien miskin yang tidak memiliki keluarga",
+                    "Pusat pengobatan herbal tanpa melibatkan metode bedah ilmiah",
+                    "Kompleks keilmuan terpadu yang menggabungkan Rumah Sakit, Fakultas Kedokteran, Laboratorium, Farmasi, dan Riset",
+                    "Bangunan isolasi penyakit menular yang dikelola swasta"
+                ],
+                answer: 2,
+                explanation: "Bimaristan bukan sekadar tempat pasien tidur, melainkan Teaching Hospital terpadu yang memadukan perawatan klinis, riset laboratorium, pembuatan obat (saydalah), pendidikan calon dokter, dan perpustakaan."
+            },
+            {
+                id: 3,
+                q: "Bagaimana Bimaristan Islam mengelola pasien yang mengalami gangguan kesehatan mental (jiwa)?",
+                options: [
+                    "Mengasingkan mereka ke luar kota karena dianggap membahayakan",
+                    "Merawat mereka secara holistik dalam bangsal psikiatri dengan terapi musik, air mancur, keharuman, dan konseling rasional",
+                    "Menganggap mereka kesurupan dan tidak memberikan pengobatan medis",
+                    "Diserahkan sepenuhnya kepada penanganan panti swasta tanpa dana negara"
+                ],
+                answer: 1,
+                explanation: "Sejak abad ke-9 (Al-Balkhi dan Al-Razi), Islam memandang penyakit jiwa setara dengan penyakit fisik. Bimaristan memiliki bangsal psikiatri yang manusiawi dengan metode musikoterapi, aromaterapi, dan psikoterapi."
+            },
+            {
+                id: 4,
+                q: "Penyediaan layanan gawat darurat gratis dan tindakan bedah penyelamatan jiwa dalam Maqashid Syariah merupakan wujud perlindungan terhadap...",
+                options: [
+                    "Hifzh ad-Din (Menjaga Agama)",
+                    "Hifzh an-Nafs (Menjaga Jiwa)",
+                    "Hifzh al-Mal (Menjaga Harta)",
+                    "Hifzh an-Nasl (Menjaga Keturunan)"
+                ],
+                answer: 1,
+                explanation: "Hifzh an-Nafs bertujuan untuk memelihara hak hidup dan keselamatan fisik manusia dari ancaman kematian dan kecacatan melalui tindakan medis darurat dan kuratif."
+            },
+            {
+                id: 5,
+                q: "Bagaimana cara Bimaristan menjaga independensi finansial dan memberikan layanan kesehatan gratis tanpa krisis utang?",
+                options: [
+                    "Mengandalkan pinjaman modal dari negara asing",
+                    "Menerapkan sistem Pajak Rumah Sakit yang tinggi kepada rakyat",
+                    "Disokong penuh oleh skema Aset Wakaf Medis (Waqf) yang produktif dan bebas komersialisasi",
+                    "Meminta bayaran penuh setelah pasien dinyatakan sembuh"
+                ],
+                answer: 2,
+                explanation: "Sistem Wakaf (Waqf) menyediakan dana abadi dari hasil kebun, pertokoan, dan gedung milik wakaf yang keuntungannya digunakan secara berkelanjutan untuk gaji dokter, fasilitas, dan pengobatan gratis."
+            }
+        ];
+
+        const App = () => {
+            const [isDarkMode, setIsDarkMode] = useState(true);
+            const [soundMuted, setSoundMuted] = useState(false);
+            const [stage, setStage] = useState('home'); // 'home' | 'module' | 'quiz'
+            const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
+            const [activeTab, setActiveTab] = useState('visual'); // 'visual' | 'analysis' | 'case'
+            const [drawerOpen, setDrawerOpen] = useState(false);
+
+            // Sync HTML dark class
+            useEffect(() => {
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }, [isDarkMode]);
+
+            // Keyboard navigation
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (stage !== 'module') return;
+                    if (e.key === 'ArrowRight' && currentLevelIdx < moduleLevels.length - 1) {
+                        nextLevel();
+                    } else if (e.key === 'ArrowLeft' && currentLevelIdx > 0) {
+                        prevLevel();
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [stage, currentLevelIdx]);
+
+            const toggleDarkMode = () => {
+                playSound.click(soundMuted);
+                setIsDarkMode(!isDarkMode);
+            };
+
+            const toggleSound = () => {
+                setSoundMuted(!soundMuted);
+            };
+
+            const startModule = async () => {
+                await initAudio();
+                playSound.click(soundMuted);
+                setStage('module');
+                setCurrentLevelIdx(0);
+                setActiveTab('visual');
+            };
+
+            const nextLevel = () => {
+                if (currentLevelIdx < moduleLevels.length - 1) {
+                    playSound.next(soundMuted);
+                    setCurrentLevelIdx(prev => prev + 1);
+                    setActiveTab('visual');
+                }
+            };
+
+            const prevLevel = () => {
+                if (currentLevelIdx > 0) {
+                    playSound.click(soundMuted);
+                    setCurrentLevelIdx(prev => prev - 1);
+                    setActiveTab('visual');
+                }
+            };
+
+            const jumpToLevel = (idx) => {
+                playSound.click(soundMuted);
+                setCurrentLevelIdx(idx);
+                setDrawerOpen(false);
+                setActiveTab('visual');
+            };
+
+            const currentData = moduleLevels[currentLevelIdx];
+
+            return (
+                <div className="min-h-screen flex flex-col justify-between transition-colors duration-300 selection:bg-brand-500 selection:text-white">
+                    {}
+                    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 px-4 py-3 transition-colors">
+                        <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => { playSound.click(soundMuted); setStage('home'); }}>
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-400 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+                                    <i className="ph-bold ph-mosque text-xl"></i>
+                                </div>
+                                <div>
+                                    <h1 className="font-serif font-bold text-base md:text-lg text-slate-800 dark:text-slate-100 leading-none">
+                                        ICHS <span className="text-brand-600 dark:text-brand-400 font-sans text-xs px-2 py-0.5 bg-brand-100 dark:bg-brand-950/80 rounded-full ml-1">Deep Dive</span>
+                                    </h1>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Islamic Civilization Health System</p>
+                                </div>
+                            </div>
+
+                            {/* Header Action Controls */}
+                            <div className="flex items-center gap-2 md:gap-3">
+                                {stage === 'module' && (
+                                    <button 
+                                        onClick={() => setDrawerOpen(!drawerOpen)} 
+                                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                    >
+                                        <i className="ph-bold ph-list-bullets text-base text-brand-600 dark:text-brand-400"></i>
+                                        <span className="hidden sm:inline">Daftar Level</span>
+                                    </button>
+                                )}
+
+                                <button 
+                                    onClick={toggleSound}
+                                    title={soundMuted ? "Aktifkan Suara" : "Matikan Suara"}
+                                    className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    <i className={`ph-bold ${soundMuted ? 'ph-speaker-slash text-red-500' : 'ph-speaker-high text-brand-500'} text-lg`}></i>
+                                </button>
+
+                                <button 
+                                    onClick={toggleDarkMode}
+                                    title="Ganti Mode Gelap/Terang"
+                                    className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    <i className={`ph-bold ${isDarkMode ? 'ph-sun text-amber-400' : 'ph-moon text-indigo-600'} text-lg`}></i>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {}
+                    {drawerOpen && (
+                        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity">
+                            <div className="w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-2xl p-6 overflow-y-auto flex flex-col justify-between border-l border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
+                                        <h3 className="font-serif font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                            <i className="ph-duotone ph-map-trifold text-brand-500"></i> Navigasi Level ICHS
+                                        </h3>
+                                        <button onClick={() => setDrawerOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                                            <i className="ph-bold ph-x text-lg"></i>
+                                        </button>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {moduleLevels.map((lvl, idx) => (
+                                            <button
+                                                key={lvl.id}
+                                                onClick={() => jumpToLevel(idx)}
+                                                className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-all ${
+                                                    idx === currentLevelIdx 
+                                                    ? 'bg-brand-500 text-white font-bold shadow-md shadow-brand-500/30' 
+                                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300'
+                                                }`}
+                                            >
+                                                <div className={`p-2 rounded-lg ${idx === currentLevelIdx ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                                    <i className={`ph-duotone ${lvl.icon} text-lg`}></i>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-[10px] uppercase opacity-80">{lvl.levelTag}</div>
+                                                    <div className="text-xs truncate font-medium">{lvl.title}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
+                                    <button 
+                                        onClick={() => { setDrawerOpen(false); setStage('quiz'); }}
+                                        className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <i className="ph-bold ph-note-pencil text-lg"></i> Langsung ke Quiz
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MAIN CONTENT STAGES */}
+                    <main className="flex-grow flex items-center justify-center p-4 md:p-8">
+                        {stage === 'home' && <WelcomeView onStart={startModule} isDark={isDarkMode} />}
+                        {stage === 'module' && (
+                            <ModuleView 
+                                data={currentData}
+                                total={moduleLevels.length}
+                                index={currentLevelIdx}
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                                onNext={nextLevel}
+                                onPrev={prevLevel}
+                                onFinish={() => setStage('quiz')}
+                                isDark={isDarkMode}
+                            />
+                        )}
+                        {stage === 'quiz' && (
+                            <QuizView 
+                                questions={quizQuestions} 
+                                onRestart={() => setStage('home')} 
+                                soundMuted={soundMuted}
+                            />
+                        )}
+                    </main>
+
+                    {}
+                    <footer className="w-full py-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200/60 dark:border-slate-800/60">
+                        Islamic Civilization Health System (ICHS) &bull; Grand Theory & Blueprint Modul Interaktif
+                    </footer>
+                </div>
+            );
+        };
+
+        const WelcomeView = ({ onStart, isDark }) => (
+            <div className="max-w-4xl w-full mx-auto text-center py-8 px-4 animate-[fadeIn_0.6s_ease-out]">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-100 dark:bg-brand-950/80 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-semibold mb-6">
+                    <i className="ph-bold ph-sparkle"></i> Modul Pembelajaran Interaktif Modern & Ulasan Mendalam
+                </div>
+                
+                <h1 className="text-3xl md:text-6xl font-serif font-extrabold text-slate-900 dark:text-white mb-6 tracking-tight leading-tight">
+                    Islamic Civilization<br/>
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-400">
+                        Health System (ICHS)
+                    </span>
+                </h1>
+
+                <p className="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto text-base md:text-lg mb-10 leading-relaxed font-normal">
+                    Menjelajahi mata rantai peradaban kesehatan Islam: Dari akar **Wahyu & Aqidah Tauhid**, pembentukan **Sains Kedokteran**, hingga pendirian kejayaan **Bimaristan** dan **Public Health Universal**.
+                </p>
+
+                {/* Key Pillars Badge Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto mb-10">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+                        <i className="ph-duotone ph-mosque text-3xl text-brand-500 mb-2"></i>
+                        <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Aqidah & Epistemologi</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+                        <i className="ph-duotone ph-microscope text-3xl text-blue-500 mb-2"></i>
+                        <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Riset & Sains Medis</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+                        <i className="ph-duotone ph-hospital text-3xl text-purple-500 mb-2"></i>
+                        <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Ekosistem Bimaristan</h4>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-center">
+                        <i className="ph-duotone ph-scales text-3xl text-amber-500 mb-2"></i>
+                        <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Maqashid Syariah</h4>
+                    </div>
+                </div>
+
+                <button
+                    onClick={onStart}
+                    className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 text-white font-bold text-lg rounded-2xl shadow-xl shadow-brand-600/30 hover:shadow-brand-600/50 hover:scale-105 transition-all duration-300"
+                >
+                    <span>Mulai Eksplorasi Deep Dive</span>
+                    <i className="ph-bold ph-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </div>
+        );
+
+        const ModuleView = ({ data, total, index, activeTab, setActiveTab, onNext, onPrev, onFinish, isDark }) => {
+            const progress = ((index + 1) / total) * 100;
+
+            return (
+                <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-[fadeIn_0.4s_ease-out]">
+                    
+                    {/* Top Progress & Step Header */}
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-3">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                            <span className="px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 tracking-wider">
+                                {data.levelTag}
+                            </span>
+                            <span className="text-slate-400">
+                                Level {index + 1} dari {total}
+                            </span>
+                        </div>
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-gradient-to-r from-brand-500 to-emerald-400 transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    {/* Main Card Container */}
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col">
+                        
+                        {/* Card Header Title Banner */}
+                        <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="p-4 rounded-2xl bg-brand-50 dark:bg-brand-950/80 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800">
+                                    <i className={`ph-duotone ${data.icon} text-3xl md:text-4xl`}></i>
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl md:text-3xl font-serif font-extrabold text-slate-900 dark:text-white leading-tight">
+                                        {data.title}
+                                    </h2>
+                                    <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                        {data.subtitle}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Tab Selection Buttons */}
+                            <div className="flex p-1 bg-slate-200/80 dark:bg-slate-800 rounded-xl w-full md:w-auto text-xs font-semibold">
+                                <button
+                                    onClick={() => setActiveTab('visual')}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all ${activeTab === 'visual' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+                                >
+                                    <i className="ph-bold ph-tree-structure mr-1"></i> Skema Visual
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('analysis')}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all ${activeTab === 'analysis' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+                                >
+                                    <i className="ph-bold ph-book-open text-brand-500 mr-1"></i> Ulasan Mendalam
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('case')}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-lg transition-all ${activeTab === 'case' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'}`}
+                                >
+                                    <i className="ph-bold ph-magnifying-glass text-amber-500 mr-1"></i> Studi Sejarah
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Card Content Body */}
+                        <div className="p-6 md:p-8 min-h-[380px] flex flex-col justify-between">
+                            
+                            {/* TAB 1: VISUAL DIAGRAM */}
+                            {activeTab === 'visual' && (
+                                <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                                    <p className="text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border-l-4 border-brand-500">
+                                        {data.overview}
+                                    </p>
+                                    
+                                    {/* Dynamic Diagram Render based on level */}
+                                    <LevelDiagram levelId={data.id} />
+                                </div>
+                            )}
+
+                            {/* TAB 2: DEEP ANALYSIS */}
+                            {activeTab === 'analysis' && (
+                                <div 
+                                    className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed animate-[fadeIn_0.3s_ease-out]"
+                                    dangerouslySetInnerHTML={{ __ariaHTML: data.detailedAnalysis, __html: data.detailedAnalysis }}
+                                ></div>
+                            )}
+
+                            {/* TAB 3: CASE STUDY */}
+                            {activeTab === 'case' && (
+                                <div 
+                                    className="animate-[fadeIn_0.3s_ease-out]"
+                                    dangerouslySetInnerHTML={{ __ariaHTML: data.caseStudy, __html: data.caseStudy }}
+                                ></div>
+                            )}
+                        </div>
+
+                        {/* Card Footer Navigation Buttons */}
+                        <div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <button
+                                onClick={onPrev}
+                                disabled={index === 0}
+                                className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
+                                    index === 0 
+                                    ? 'opacity-40 cursor-not-allowed text-slate-400' 
+                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm border border-slate-200 dark:border-slate-700'
+                                }`}
+                            >
+                                <i className="ph-bold ph-arrow-left"></i> Sebelumnya
+                            </button>
+
+                            {index === total - 1 ? (
+                                <button
+                                    onClick={onFinish}
+                                    className="px-6 py-2.5 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all"
+                                >
+                                    Uji Pemahaman (Quiz) <i className="ph-bold ph-check-circle text-lg"></i>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={onNext}
+                                    className="px-6 py-2.5 rounded-xl text-sm font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/30 flex items-center gap-2 transition-all"
+                                >
+                                    Selanjutnya <i className="ph-bold ph-arrow-right"></i>
+                                </button>
+                            )}
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        const LevelDiagram = ({ levelId }) => {
+            if (levelId === "grand-theory" || levelId === "level-10") {
+                return (
+                    <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-inner border border-slate-800 flex flex-col items-center gap-3 text-center">
+                        <div className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-4 py-1.5 rounded-full font-bold text-xs">
+                            ALLAH ﷻ
+                        </div>
+                        <i className="ph-bold ph-arrow-down text-slate-500"></i>
+                        <div className="bg-slate-800 px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-200 border border-slate-700">
+                            Wahyu (Al-Qur'an & Sunnah)
+                        </div>
+                        <i className="ph-bold ph-arrow-down text-slate-500"></i>
+                        <div className="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl text-sm shadow-md">
+                            AQIDAH ISLAM
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full my-2">
+                            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                                <div className="text-xs font-bold text-blue-400">At-Tafkir</div>
+                                <div className="text-[10px] text-slate-400">Cara Berpikir Saintifik</div>
+                            </div>
+                            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                                <div className="text-xs font-bold text-emerald-400">Syakhsiyah</div>
+                                <div className="text-[10px] text-slate-400">Kepribadian & Etika</div>
+                            </div>
+                            <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+                                <div className="text-xs font-bold text-purple-400">Nizham Islam</div>
+                                <div className="text-[10px] text-slate-400">Sistem Kehidupan</div>
+                            </div>
+                        </div>
+
+                        <i className="ph-bold ph-arrow-down text-slate-500"></i>
+                        <div className="bg-amber-600/30 text-amber-300 font-bold px-5 py-1.5 rounded-lg text-xs border border-amber-500/30">
+                            MAQASHID SYARIAH (Tujuan Syariat)
+                        </div>
+                        <i className="ph-bold ph-arrow-down text-slate-500"></i>
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold px-6 py-3 rounded-2xl text-sm shadow-xl tracking-wider uppercase border border-emerald-400/30">
+                            BIMARISTAN SYSTEM & PUBLIC HEALTH
+                        </div>
+                    </div>
+                );
+            }
+
+            if (levelId === "level-1" || levelId === "level-2" || levelId === "level-9") {
+                const steps = levelId === "level-1" 
+                    ? ['Tauhid', 'Aqidah', 'At-Tafkir', 'Cara Hidup', 'Budaya Sehat', 'Peradaban ICHS']
+                    : levelId === "level-2"
+                    ? ['Aqidah', 'Rasa Ingin Tahu', 'Riset & Anatomi', 'Sains Medis', 'Teknologi Bimaristan']
+                    : ['AQIDAH', 'ILMU', 'PENDIDIKAN', 'BIMARISTAN', 'RISET', 'KESEHATAN MASYARAKAT', 'PERADABAN KUAT'];
+
+                return (
+                    <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-2 py-4">
+                        {steps.map((step, idx) => (
+                            <React.Fragment key={idx}>
+                                <div className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs text-center shadow-sm">
+                                    {step}
+                                </div>
+                                {idx < steps.length - 1 && (
+                                    <i className="ph-bold ph-caret-right text-brand-500 text-base hidden md:block"></i>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                );
+            }
+
+            if (levelId === "level-4") {
+                return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {['Rumah Sakit Utama', 'Fakultas Kedokteran', 'Laboratorium Organik', 'Perpustakaan Sains', 'Apotek (Saydalah)', 'Pusat Riset Anatomi', 'Pendidikan Spesialis', 'Direktorat Administrasi'].map((dept, i) => (
+                            <div key={i} className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl flex items-center gap-2 text-xs font-semibold text-purple-900 dark:text-purple-200">
+                                <i className="ph-bold ph-check-circle text-purple-500 text-base"></i>
+                                <span>{dept}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="p-6 bg-slate-100 dark:bg-slate-800/60 rounded-2xl text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                    Gunakan Tab "Ulasan Mendalam" dan "Studi Sejarah" di atas untuk membaca pemaparan komprehensif level ini.
+                </div>
+            );
+        };
+
+        const QuizView = ({ questions, onRestart, soundMuted }) => {
+            const [currentQIdx, setCurrentQIdx] = useState(0);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [score, setScore] = useState(0);
+            const [isSubmitted, setIsSubmitted] = useState(false);
+            const [quizComplete, setQuizComplete] = useState(false);
+
+            const q = questions[currentQIdx];
+
+            const handleSelect = (idx) => {
+                if (isSubmitted) return;
+                playSound.click(soundMuted);
+                setSelectedOption(idx);
+            };
+
+            const handleSubmit = () => {
+                if (selectedOption === null) return;
+                setIsSubmitted(true);
+                
+                if (selectedOption === q.answer) {
+                    playSound.correct(soundMuted);
+                    setScore(prev => prev + 1);
+                } else {
+                    playSound.wrong(soundMuted);
+                }
+            };
+
+            const handleNextQuestion = () => {
+                playSound.next(soundMuted);
+                setSelectedOption(null);
+                setIsSubmitted(false);
+
+                if (currentQIdx < questions.length - 1) {
+                    setCurrentQIdx(prev => prev + 1);
+                } else {
+                    playSound.complete(soundMuted);
+                    setQuizComplete(true);
+                }
+            };
+
+            if (quizComplete) {
+                const percentage = Math.round((score / questions.length) * 100);
+                return (
+                    <div className="max-w-lg w-full mx-auto bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl text-center animate-[fadeIn_0.5s_ease-out]">
+                        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-500 flex items-center justify-center text-4xl shadow-inner">
+                            <i className="ph-duotone ph-trophy"></i>
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-serif font-extrabold text-slate-900 dark:text-white mb-2">
+                            Evaluasi Selesai!
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+                            Skor Pemahaman Blueprint Kesehatan Islam Anda:
+                        </p>
+                        
+                        <div className="text-5xl font-black text-brand-600 dark:text-brand-400 mb-2">
+                            {percentage}%
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mb-8 font-semibold">
+                            {score} dari {questions.length} Soal Dijawab Benar
+                        </p>
+
+                        <button
+                            onClick={onRestart}
+                            className="w-full py-3.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-2xl shadow-lg transition-all text-sm"
+                        >
+                            Ulangi Pembelajaran Modul
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-2xl w-full mx-auto bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                        <span>Evaluasi Pemahaman ICHS</span>
+                        <span>Soal {currentQIdx + 1} dari {questions.length}</span>
+                    </div>
+
+                    <h3 className="text-lg md:text-xl font-serif font-bold text-slate-900 dark:text-white mb-6 leading-relaxed">
+                        {q.q}
+                    </h3>
+
+                    <div className="space-y-3 mb-6">
+                        {q.options.map((opt, idx) => {
+                            let btnStyle = "w-full text-left p-4 rounded-2xl border text-xs md:text-sm font-medium transition-all flex items-center justify-between ";
+                            
+                            if (!isSubmitted) {
+                                if (selectedOption === idx) {
+                                    btnStyle += "border-brand-500 bg-brand-50 dark:bg-brand-950/60 text-brand-900 dark:text-brand-200 shadow-sm";
+                                } else {
+                                    btnStyle += "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300";
+                                }
+                            } else {
+                                if (idx === q.answer) {
+                                    btnStyle += "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 font-bold";
+                                } else if (idx === selectedOption) {
+                                    btnStyle += "border-red-500 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-200 opacity-80";
+                                } else {
+                                    btnStyle += "border-slate-200 dark:border-slate-800 text-slate-400 opacity-40";
+                                }
+                            }
+
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleSelect(idx)}
+                                    className={btnStyle}
+                                >
+                                    <span>{opt}</span>
+                                    {isSubmitted && idx === q.answer && <i className="ph-bold ph-check-circle text-emerald-500 text-lg"></i>}
+                                    {isSubmitted && idx === selectedOption && idx !== q.answer && <i className="ph-bold ph-x-circle text-red-500 text-lg"></i>}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Explanation Box After Submit */}
+                    {isSubmitted && (
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 mb-6 animate-[fadeIn_0.3s_ease-out]">
+                            <h4 className="font-bold text-xs text-brand-600 dark:text-brand-400 mb-1 flex items-center gap-1">
+                                <i className="ph-bold ph-info"></i> Pembahasan:
+                            </h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                {q.explanation}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Action Button */}
+                    {!isSubmitted ? (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={selectedOption === null}
+                            className={`w-full py-3.5 rounded-2xl font-bold text-sm text-white transition-all ${
+                                selectedOption === null 
+                                ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed' 
+                                : 'bg-brand-600 hover:bg-brand-500 shadow-lg shadow-brand-600/30'
+                            }`}
+                        >
+                            Verifikasi Jawaban
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleNextQuestion}
+                            className="w-full py-3.5 bg-slate-900 dark:bg-slate-100 dark:text-slate-900 text-white font-bold rounded-2xl hover:opacity-90 transition-all text-sm flex items-center justify-center gap-2"
+                        >
+                            Soal Berikutnya <i className="ph-bold ph-arrow-right"></i>
+                        </button>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
